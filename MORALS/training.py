@@ -5,6 +5,7 @@ import numpy as np
 from torch import nn
 from tqdm import tqdm
 from MORALS.models import *
+from .topological_autoencoders.approx_based import TopologicalSignatureDistance
 
 class TrainingConfig:
     def __init__(self, weights_str):
@@ -48,6 +49,9 @@ class Training:
         self.encoder = Encoder(config)
         self.dynamics = LatentDynamics(config)
         self.decoder = Decoder(config)
+        self.latent_norm = torch.nn.Parameter(data=torch.ones(1),
+                                              requires_grad=True) # to do: understand why this is used
+        self.topo_sig = TopologicalSignatureDistance()
 
         self.verbose = bool(verbose)
 
@@ -96,13 +100,23 @@ class Training:
         x_t = x_t.to(self.device)
         x_tau = x_tau.to(self.device)
 
+        # z_t = E(x_t)
         z_t = self.encoder(x_t)
+
+        # x_t_pred = D(E(x_t))
         x_t_pred = self.decoder(z_t)
 
+        # z_tau = E(x_tau)
         z_tau = self.encoder(x_tau)
+
+        # x_tau_pred = D(E(x_tau))
+        # this variable does not get passed forward?
         x_tau_pred = self.decoder(z_tau)
 
+        # z_tau_pred = latent_dynamics(E(x_t))
         z_tau_pred = self.dynamics(z_t)
+
+        # x_tau_pred_dyn = D(latent_dynamics(E(x_t)))
         x_tau_pred_dyn = self.decoder(z_tau_pred)
 
         return (x_t, x_tau, x_t_pred, z_tau, z_tau_pred, x_tau_pred_dyn)
@@ -110,14 +124,55 @@ class Training:
     def dynamics_losses(self, forward_pass, weight):
         x_t, x_tau, x_t_pred, z_tau, z_tau_pred, x_tau_pred_dyn = forward_pass
 
+        # x_t_pred = D(E(x_t)) so this is the reconstruction loss for x_t
         loss_ae1 = self.dynamics_criterion(x_t, x_t_pred)
+
+        # x_tau_pred_dyn = D(latent_dynamics(E(x_t))) so this is also a dynamics loss. Should x_tau_pred_dyn be x_tau_pred?
         loss_ae2 = self.dynamics_criterion(x_tau, x_tau_pred_dyn)
+
+        # z_tau_pred = latent_dynamics(E(x_t)) and z_tau = E(x_tau) so this is the dynamics loss 
         loss_dyn = self.dynamics_criterion(z_tau_pred, z_tau)
         loss_total = loss_ae1 * weight[0] + loss_ae2 * weight[1] + loss_dyn * weight[2]
         return loss_ae1, loss_ae2, loss_dyn, loss_total
 
     def labels_losses(self, encodings, pairs, weight):
         return self.labels_criterion(encodings[pairs['successes']], encodings[pairs['failures']]) * weight
+    
+    @staticmethod
+    def _compute_distance_matrix(x, p=2):
+        x_flat = x.view(x.size(0), -1)
+        distances = torch.norm(x_flat[:, None] - x_flat, dim=2, p=p)
+        return distances
+    
+    def topological_losses(self, forward_pass, weight):
+        x_t, x_tau, x_t_pred, z_tau, z_tau_pred, x_tau_pred_dyn = forward_pass
+
+        x = torch.cat((x_t, x_tau), dim = 0)
+        dimensions = x.size()
+
+        x_distances = self._compute_distance_matrix(x)
+
+        # normalize
+        # to do: understand exception in the original code for 4-d
+        x_distances = x_distances / x_distances.max()
+
+        # to do: get latent from the forward pass, for now I am recomputing in order to not change the forward pass
+        z_t = self.encoder(x_t)
+        z_tau = self.encoder(x_tau)
+
+        latent = torch.cat((z_t, z_tau), dim = 0)
+        latent_distances = self._compute_distance_matrix(latent)
+        latent_distances = latent_distances / self.latent_norm
+
+        topo_error, topo_error_components = self.topo_sig(
+            x_distances, latent_distances)
+        
+        # normalize topo_error according to batch_size
+        batch_size = dimensions[0]
+        topo_error = topo_error / float(batch_size)
+        topo_error_weighted = topo_error * weight[4]
+    
+        return topo_error_weighted
 
 
     def train(self, epochs=1000, patience=50, weight=[1,1,1,0]):
@@ -141,19 +196,25 @@ class Training:
 
 
             if weight_bool[0] or weight_bool[1] or weight_bool[2]: 
+                # put encoder and decoder in train mode
                 self.encoder.train() 
                 self.decoder.train() 
             if weight_bool[1] or weight_bool[2]: 
+                # put dynamics in train mode
                 self.dynamics.train()
 
             num_batches = min(len(self.dynamics_train_loader), len(self.labels_train_loader))
             for (x_t, x_tau), (pairs, x_final) in zip(self.dynamics_train_loader, self.labels_train_loader):
                 optimizer.zero_grad()
 
-                # Forward pass
+                # Forward pass (apply all models)
                 forward_pass = self.forward(x_t, x_tau)
                 # Compute losses
                 loss_ae1, loss_ae2, loss_dyn, loss_total = self.dynamics_losses(forward_pass, weight)
+                if weight[4] != 0:
+                    loss_topo = self.topological_losses(forward_pass, weight)
+                    loss_total += loss_topo
+
                 loss_con = 0
                 if weight[3] != 0:
                     x_final = x_final.to(self.device)
