@@ -17,8 +17,8 @@ class TrainingConfig:
         self.weights = []
         for _, id in enumerate(ids):
             self.weights.append([float(e) for e in id.split('x')[:-1]])
-            if len(self.weights[-1]) != 4:
-                print("Expected 4 values per training config, got ", len(self.weights[-1]))
+            if len(self.weights[-1]) != 5:
+                print("Expected 5 values per training config, got ", len(self.weights[-1]))
                 raise ValueError
     
     def __getitem__(self, key):
@@ -93,8 +93,8 @@ class Training:
             pickle.dump(self.test_losses, f)
     
     def reset_losses(self):
-        self.train_losses = {'loss_ae1': [], 'loss_ae2': [], 'loss_dyn': [], 'loss_contrastive': [], 'loss_total': []}
-        self.test_losses = {'loss_ae1': [], 'loss_ae2': [], 'loss_dyn': [], 'loss_contrastive': [], 'loss_total': []}
+        self.train_losses = {'loss_ae1': [], 'loss_ae2': [], 'loss_dyn': [], 'loss_contrastive': [], 'loss_topo': [], 'loss_total': []}
+        self.test_losses = {'loss_ae1': [], 'loss_ae2': [], 'loss_dyn': [], 'loss_contrastive': [], 'loss_topo': [], 'loss_total': []}
     
     def forward(self, x_t, x_tau):
         x_t = x_t.to(self.device)
@@ -175,7 +175,7 @@ class Training:
         return topo_error_weighted
 
 
-    def train(self, epochs=1000, patience=50, weight=[1,1,1,0]):
+    def train(self, epochs=1000, patience=50, weight=[1,1,1,0,1]):
         '''
         Function that trains all the models with all the losses and weight.
         It will stop if the test loss does not improve for "patience" epochs.
@@ -190,6 +190,7 @@ class Training:
             loss_ae2_train = 0
             loss_dyn_train = 0
             loss_contrastive_train = 0
+            loss_topo_train = 0
 
             epoch_train_loss = 0
             epoch_test_loss  = 0
@@ -214,6 +215,7 @@ class Training:
                 if weight[4] != 0:
                     loss_topo = self.topological_losses(forward_pass, weight)
                     loss_total += loss_topo
+                    loss_topo_train += loss_topo.item()
 
                 loss_con = 0
                 if weight[3] != 0:
@@ -237,6 +239,7 @@ class Training:
             self.train_losses['loss_ae2'].append(loss_ae2_train / num_batches)
             self.train_losses['loss_dyn'].append(loss_dyn_train / num_batches)
             self.train_losses['loss_contrastive'].append(loss_contrastive_train / num_batches)
+            self.train_losses['loss_topo'].append(loss_topo_train / num_batches)
             self.train_losses['loss_total'].append(epoch_train_loss)
 
             with torch.no_grad():
@@ -244,6 +247,7 @@ class Training:
                 loss_ae2_test = 0
                 loss_dyn_test = 0
                 loss_contrastive_test = 0
+                loss_topo_test = 0
 
                 if weight_bool[0] or weight_bool[1] or weight_bool[2]:  
                     self.encoder.eval() 
@@ -258,16 +262,21 @@ class Training:
                     # Compute losses
                     loss_ae1, loss_ae2, loss_dyn, loss_total = self.dynamics_losses(forward_pass, weight)
 
-                    loss_ae1_test += loss_ae1.item() 
-                    loss_ae2_test += loss_ae2.item() 
-                    loss_dyn_test += loss_dyn.item() 
-                    epoch_test_loss += loss_total.item()
-
                     if weight[3] != 0:
                         x_final = x_final.to(self.device)
                         z_final = self.encoder(x_final)
                         loss_con = self.labels_losses(z_final, pairs, weight[3])
                         loss_contrastive_test += loss_con.item()
+                
+                    if weight[4] != 0:
+                        loss_topo = self.topological_losses(forward_pass, weight)
+                        loss_total += loss_topo
+                        loss_topo_test += loss_topo.item()
+
+                    loss_ae1_test += loss_ae1.item() 
+                    loss_ae2_test += loss_ae2.item() 
+                    loss_dyn_test += loss_dyn.item() 
+                    epoch_test_loss += loss_total.item()
 
                 epoch_test_loss /= num_batches
 
@@ -275,6 +284,7 @@ class Training:
                 self.test_losses['loss_ae2'].append(loss_ae2_test / num_batches)
                 self.test_losses['loss_dyn'].append(loss_dyn_test / num_batches)
                 self.test_losses['loss_contrastive'].append(loss_contrastive_test / num_batches)
+                self.test_losses['loss_topo'].append(loss_topo_test / num_batches)
                 self.test_losses['loss_total'].append(epoch_test_loss)
 
             scheduler.step(epoch_test_loss)
