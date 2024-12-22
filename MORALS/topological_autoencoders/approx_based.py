@@ -10,7 +10,7 @@ from .topology import PersistentHomologyCalculation #AlephPersistenHomologyCalcu
 class TopologicalSignatureDistance(nn.Module):
     """Topological signature."""
 
-    def __init__(self, sort_selected=False, use_cycles=True, # use_cycles was set to False by default in the original code
+    def __init__(self, sort_selected=False, use_cycles=False, # use_cycles was set to False by default in the original code
                  match_edges=None):
         """Topological signature computation.
 
@@ -74,6 +74,10 @@ class TopologicalSignatureDistance(nn.Module):
 
     @staticmethod
     def _get_nonzero_cycles(pairs):
+        # print('pairs: ', pairs)
+        # if len(pairs) == 0:
+        #     return 0
+        # else:
         all_indices_equal = np.sum(pairs[:, [0]] == pairs[:, 1:], axis=-1) == 3
         return np.sum(np.logical_not(all_indices_equal))
 

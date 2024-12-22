@@ -69,7 +69,7 @@ class MorseGraphOutputProcessor:
         upper_bounds = [1.]*self.dims
         latent_space_area = np.prod(np.array(upper_bounds) - np.array(lower_bounds))
         box_area = np.prod(self.box_size)
-        subdivisions = np.log2(latent_space_area/box_area)
+        subdivisions = 16 #np.log2(latent_space_area/box_area)
         self.grid = Grid(lower_bounds, upper_bounds, int(subdivisions))
 
     def get_num_attractors(self):
@@ -86,5 +86,6 @@ class MorseGraphOutputProcessor:
     
     def which_morse_node(self, point):
         assert point.shape[0] == self.dims
+      #  print('self.corner_points', self.corner_points)
         found = self.corner_points[self.grid.point2indexCMGDB(point)]
         return found
