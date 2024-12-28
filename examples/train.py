@@ -50,6 +50,7 @@ def main():
     parser.add_argument('--config',help='Config file inside config_dir',type=str,default='bistable.txt')
     parser.add_argument('--verbose',help='Print training output',action='store_true')
     parser.add_argument('--collapse',help='Check for collapse',action='store_true')
+    parser.add_argument('--fine_tune',help='Fine tune the model',action='store_true')
 
 
     args = parser.parse_args()
@@ -68,8 +69,14 @@ def main():
     dynamics_train_size = int(0.8*len(dynamics_dataset))
     dynamics_test_size = len(dynamics_dataset) - dynamics_train_size
     dynamics_train_dataset, dynamics_test_dataset = torch.utils.data.random_split(dynamics_dataset, [dynamics_train_size, dynamics_test_size])
-    dynamics_train_loader = DataLoader(dynamics_train_dataset, batch_size=config["batch_size"], shuffle=True)
-    dynamics_test_loader = DataLoader(dynamics_test_dataset, batch_size=config["batch_size"], shuffle=True)
+
+    if args.fine_tune:
+        batch_size = 1024
+    else:
+        batch_size = config["batch_size"]
+
+    dynamics_train_loader = DataLoader(dynamics_train_dataset, batch_size=batch_size, shuffle=True)
+    dynamics_test_loader = DataLoader(dynamics_test_dataset, batch_size=batch_size, shuffle=True)
 
     if "labels_fname" in config.keys(): 
         labels_dataset = LabelsDataset(config)
@@ -102,17 +109,24 @@ def main():
     trainer = Training(config, loaders, args.verbose)
     experiment = TrainingConfig(config['experiment'])
 
-    for i,exp in enumerate(experiment):
-        if args.verbose:
-            print("Training loss weights: ", exp)
-        trainer.train(config["epochs"], config["patience"], exp)
-        trainer.save_logs(suffix =str(i))
-        trainer.reset_losses()
+    if not args.fine_tune:
+        for i,exp in enumerate(experiment):
+            if args.verbose:
+                print("Training loss weights: ", exp)
+            trainer.train(config["epochs"], config["patience"], exp)
+            trainer.save_logs(suffix =str(i))
+            trainer.reset_losses()
+        trainer.save_models()
 
+    if args.fine_tune:
+        # freeze the encoder and decoder weights
+        trainer.fine_tune(config["epochs"], config["patience"])
+        trainer.save_logs(suffix = "_fine_tune")
+        trainer.reset_losses()
+        trainer.save_models('fine_tune')
 
     if args.collapse:
         check_collapse(trainer.encoder, dynamics_train_dataset)
-    trainer.save_models()    
 
 if __name__ == "__main__":
     main()

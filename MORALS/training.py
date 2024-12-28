@@ -77,10 +77,15 @@ class Training:
         self.model_dir = config["model_dir"]
         self.log_dir = config["log_dir"]
 
-    def save_models(self):
-        torch.save(self.encoder, os.path.join(self.model_dir, 'encoder.pt'))
-        torch.save(self.dynamics, os.path.join(self.model_dir, 'dynamics.pt'))
-        torch.save(self.decoder, os.path.join(self.model_dir, 'decoder.pt'))
+    def save_models(self, suffix=''):
+        torch.save(self.encoder, os.path.join(self.model_dir, 'encoder_' + suffix + '.pt'))
+        torch.save(self.dynamics, os.path.join(self.model_dir, 'dynamics_' + suffix + '.pt'))
+        torch.save(self.decoder, os.path.join(self.model_dir, 'decoder_' + suffix + '.pt'))
+        
+    def load_models(self):
+        self.encoder = torch.load(os.path.join(self.model_dir, 'encoder.pt'))
+        self.dynamics = torch.load(os.path.join(self.model_dir, 'dynamics.pt'))
+        self.decoder = torch.load(os.path.join(self.model_dir, 'decoder.pt'))
     
     def save_logs(self, suffix):
         if not os.path.exists(self.log_dir):
@@ -297,3 +302,22 @@ class Training:
             
             if self.verbose:
                 print('Epoch [{}/{}], Train Loss: {:.4f}, Test Loss: {:.4f}'.format(epoch + 1, epochs, epoch_train_loss, epoch_test_loss))
+
+    def fine_tune(self, epochs=1000, patience=50, weight=[0,1,1,0,0]):
+        '''
+        Function that fine-tunes the encoder and decoder with the dynamics loss only.
+        It will stop if the test loss does not improve for "patience" epochs.
+        '''
+        self.load_models()
+
+        for param in self.encoder.parameters():
+            param.requires_grad = False
+        
+        for param in self.decoder.parameters():
+            param.requires_grad = False
+
+        self.train(epochs, patience, weight)
+        
+
+
+

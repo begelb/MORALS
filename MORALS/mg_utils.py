@@ -69,8 +69,12 @@ class MorseGraphOutputProcessor:
         upper_bounds = [1.]*self.dims
         latent_space_area = np.prod(np.array(upper_bounds) - np.array(lower_bounds))
         box_area = np.prod(self.box_size)
-        subdivisions = 16 #np.log2(latent_space_area/box_area)
-        self.grid = Grid(lower_bounds, upper_bounds, int(subdivisions))
+        print('latent_space_area', latent_space_area)
+        print('box_area', box_area)
+        print('np.log2(latent_space_area/box_area)', np.log2(latent_space_area/box_area))
+        subdivisions = np.log2(latent_space_area/box_area)
+        print('round(subdivisions)', round(subdivisions))
+        self.grid = Grid(lower_bounds, upper_bounds, round(subdivisions))
 
     def get_num_attractors(self):
         return self.found_attractors
