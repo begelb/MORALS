@@ -24,7 +24,17 @@ class MorseGraphOutputProcessor:
             for i, line in enumerate(lines):
                 if line[0].isalpha():
                     self.indices.append(i)
-            self.box_size = np.array(lines[self.indices[0]+1].split(',')).astype(np.float32)
+            first_num_line = np.array(lines[self.indices[0]+1].split(',')).astype(np.float32)
+            # Extract only the first self.dim numerical values in the file as box_size
+            # Previously self.box_size was equal to the entire line, and then np.prod(self.box_size) was only correct by accident when the lower bounds were -1 and the upper bounds were 1
+            # To do: test for dim > 2
+            self.box_size = first_num_line[:self.dims]
+            self.lower_bounds = first_num_line[self.dims:2*self.dims].tolist()
+            self.upper_bounds = first_num_line[2*self.dims:3*self.dims].tolist()
+            print('Box size: ', self.box_size)
+            print('Lower bounds: ', self.lower_bounds)
+            print('Upper bounds: ', self.upper_bounds)
+
             self.morse_nodes_data = np.vstack([np.array(line.split(',')).astype(np.float32) for line in lines[self.indices[1]+1:self.indices[2]]])
             if len(self.indices) >= 2:
                 self.attractor_nodes_data = np.vstack([np.array(line.split(',')).astype(np.float32) for line in lines[self.indices[2]+1:]])
@@ -65,16 +75,18 @@ class MorseGraphOutputProcessor:
                     self.outgoing_edges[a].append(b)
                     self.incoming_edges[b].append(a)
 
-        lower_bounds = [-1.]*self.dims
-        upper_bounds = [1.]*self.dims
-        latent_space_area = np.prod(np.array(upper_bounds) - np.array(lower_bounds))
+        # lower_bounds = [-1.]*self.dims
+        # upper_bounds = [1.]*self.dims
+    
+        latent_space_area = np.prod(np.array(self.upper_bounds) - np.array(self.lower_bounds))
+        print('self.box_size', self.box_size)
         box_area = np.prod(self.box_size)
         print('latent_space_area', latent_space_area)
         print('box_area', box_area)
         print('np.log2(latent_space_area/box_area)', np.log2(latent_space_area/box_area))
         subdivisions = np.log2(latent_space_area/box_area)
         print('round(subdivisions)', round(subdivisions))
-        self.grid = Grid(lower_bounds, upper_bounds, round(subdivisions))
+        self.grid = Grid(self.lower_bounds, self.upper_bounds, round(subdivisions))
 
     def get_num_attractors(self):
         return self.found_attractors
