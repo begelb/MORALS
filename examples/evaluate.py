@@ -1,7 +1,7 @@
 from MORALS.mg_utils import MorseGraphOutputProcessor
 from MORALS.data_utils import *
 from MORALS.dynamics_utils import *
-import argparse 
+import argparse
 
 np.set_printoptions(suppress=True)
 
@@ -93,14 +93,18 @@ if __name__ == "__main__":
             inside_nodes.add(key)
     '''
 
+    not_inside_bounds_count = 0
     inside_nodes = set()
-   # print('encoded_successful_final_conditions.shape[0]', encoded_successful_final_conditions.shape[0])
     for i in range(encoded_successful_final_conditions.shape[0]):
-     #   print('encoded_successful_final_conditions[i]', encoded_successful_final_conditions[i])
-        inside_nodes.add(mg_out_utils.which_morse_node(encoded_successful_final_conditions[i]))
+        point = encoded_successful_final_conditions[i]
+        if mg_out_utils.check_in_bounds(point):
+            inside_nodes.add(mg_out_utils.which_morse_node(encoded_successful_final_conditions[i]))
+        else:
+            not_inside_bounds_count += 1
     if -1 in inside_nodes:
         inside_nodes.remove(-1)
-    
+    print('Not inside bounds count ', not_inside_bounds_count)
+
     encoded_initial_states = dynamics.encode(np.vstack([elt[0] for elt in trajectories]))
     ground_truth = []
     predicted = []
@@ -115,11 +119,10 @@ if __name__ == "__main__":
     ground_truth = np.array(ground_truth)
     predicted = np.array(predicted)
     # print first few ground_truth
-    print(ground_truth[:10])
+    print(ground_truth[:25])
     # print first few predicted
-    print(predicted[:10])
+    print(predicted[:25])
 
-    print(ground_truth.shape, predicted.shape)
     precision, recall, f1, _ = precision_recall_fscore_support(ground_truth, predicted, average='binary')
     precisions[k].append(precision)
     recalls[k].append(recall)

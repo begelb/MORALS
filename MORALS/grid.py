@@ -45,6 +45,7 @@ class Grid:
         coordinate = []
         for i in range(self.dim):
 
+            assert point[i] >= self.lower_bounds[i], "point is out of bounds"
             coordinate_temp_i = int((point[i] - self.lower_bounds[i]) / self.size_of_box[i])
 
             # update coordinate in case it falls on the right fringe (right boundary)

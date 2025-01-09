@@ -88,6 +88,13 @@ class MorseGraphOutputProcessor:
         print('round(subdivisions)', round(subdivisions))
         self.grid = Grid(self.lower_bounds, self.upper_bounds, round(subdivisions))
 
+    def check_in_bounds(self, point):
+        in_bounds_list = []
+        for d in range(self.dims):
+            in_bounds = self.lower_bounds[d] <= point[d] <= self.upper_bounds[d]
+            in_bounds_list.append(in_bounds)
+        return all(in_bounds_list)
+
     def get_num_attractors(self):
         return self.found_attractors
     
@@ -102,6 +109,5 @@ class MorseGraphOutputProcessor:
     
     def which_morse_node(self, point):
         assert point.shape[0] == self.dims
-      #  print('self.corner_points', self.corner_points)
         found = self.corner_points[self.grid.point2indexCMGDB(point)]
         return found
