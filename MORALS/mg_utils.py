@@ -86,7 +86,7 @@ class MorseGraphOutputProcessor:
         print('np.log2(latent_space_area/box_area)', np.log2(latent_space_area/box_area))
         subdivisions = np.log2(latent_space_area/box_area)
         print('round(subdivisions)', round(subdivisions))
-        self.grid = Grid(self.lower_bounds, self.upper_bounds, round(subdivisions))
+        self.grid = Grid(self.lower_bounds, self.upper_bounds, int(round(subdivisions)))
 
     def check_in_bounds(self, point):
         in_bounds_list = []
