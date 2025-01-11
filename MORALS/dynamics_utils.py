@@ -7,7 +7,7 @@ from MORALS.models import *
 import os
 
 class DynamicsUtils:
-    def __init__(self, config):
+    def __init__(self, config, fine_tune=False):
         self.system = get_system(config['system'])
 
         assert os.path.exists(config['model_dir']), "model expected"
@@ -25,9 +25,14 @@ class DynamicsUtils:
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        self.encoder = torch.load(os.path.join(config['model_dir'], 'encoder_fine_tune.pt'), map_location=self.device)
-        self.decoder = torch.load(os.path.join(config['model_dir'], 'decoder_fine_tune.pt'), map_location=self.device)
-        self.dynamics = torch.load(os.path.join(config['model_dir'], 'dynamics_fine_tune.pt'), map_location=self.device)
+        if fine_tune:
+            model_dir = os.path.join(config['model_dir'], 'fine_tune')
+        else:
+            model_dir = config['model_dir']
+            
+        self.encoder = torch.load(os.path.join(model_dir, 'encoder.pt'), map_location=self.device)
+        self.decoder = torch.load(os.path.join(model_dir, 'decoder.pt'), map_location=self.device)
+        self.dynamics = torch.load(os.path.join(model_dir, 'dynamics.pt'), map_location=self.device)
 
         self.encoder.to(self.device)
         self.decoder.to(self.device)

@@ -119,11 +119,10 @@ def main():
         trainer.save_models()
 
     if args.fine_tune:
-        # freeze the encoder and decoder weights
         trainer.fine_tune(config["epochs"], config["patience"])
         trainer.save_logs(suffix = "_fine_tune")
         trainer.reset_losses()
-        trainer.save_models('fine_tune')
+        trainer.save_models(subfolder = 'fine_tune')
 
     if args.collapse:
         check_collapse(trainer.encoder, dynamics_train_dataset)

@@ -77,15 +77,17 @@ class Training:
         self.model_dir = config["model_dir"]
         self.log_dir = config["log_dir"]
 
-    def save_models(self, suffix=''):
-        torch.save(self.encoder, os.path.join(self.model_dir, 'encoder_' + suffix + '.pt'))
-        torch.save(self.dynamics, os.path.join(self.model_dir, 'dynamics_' + suffix + '.pt'))
-        torch.save(self.decoder, os.path.join(self.model_dir, 'decoder_' + suffix + '.pt'))
-        
+    def save_models(self, subfolder='', suffix=''):
+        save_path = os.path.join(self.model_dir, subfolder)
+        os.makedirs(save_path, exist_ok=True)
+        torch.save(self.encoder, os.path.join(save_path, 'encoder' + suffix + '.pt'))
+        torch.save(self.dynamics, os.path.join(save_path, 'dynamics' + suffix + '.pt'))
+        torch.save(self.decoder, os.path.join(save_path, 'decoder' + suffix + '.pt'))
+    
     def load_models(self):
-        self.encoder = torch.load(os.path.join(self.model_dir, 'encoder.pt'))
-        self.dynamics = torch.load(os.path.join(self.model_dir, 'dynamics.pt'))
-        self.decoder = torch.load(os.path.join(self.model_dir, 'decoder.pt'))
+        self.encoder = torch.load(os.path.join(self.model_dir, 'encoder_.pt'))
+        self.dynamics = torch.load(os.path.join(self.model_dir, 'dynamics_.pt'))
+        self.decoder = torch.load(os.path.join(self.model_dir, 'decoder_.pt'))
     
     def save_logs(self, suffix):
         if not os.path.exists(self.log_dir):
@@ -185,7 +187,10 @@ class Training:
         Function that trains all the models with all the losses and weight.
         It will stop if the test loss does not improve for "patience" epochs.
         '''
+        print("Training with weights: ", weight)
         weight_bool = [bool(i) for i in weight]
+        print('weight bool: ', weight_bool)
+
         list_parameters = (weight_bool[0] or weight_bool[1] or weight_bool[2]) * (list(self.encoder.parameters()) + list(self.decoder.parameters()))
         list_parameters += (weight_bool[1] or weight_bool[2]) * list(self.dynamics.parameters())
         optimizer = torch.optim.Adam(list_parameters, lr=self.lr)
@@ -236,6 +241,7 @@ class Training:
                 loss_ae1_train += loss_ae1.item()
                 loss_ae2_train += loss_ae2.item()
                 loss_dyn_train += loss_dyn.item()
+
                 epoch_train_loss += loss_total.item()
 
             epoch_train_loss /= num_batches

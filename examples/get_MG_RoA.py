@@ -1,3 +1,7 @@
+from MORALS.data_utils import DynamicsDataset, LabelsDataset
+from MORALS.models import *
+from MORALS.training import Training, TrainingConfig
+
 from MORALS.systems.utils import get_system
 from MORALS.models import *
 from MORALS.dynamics_utils import DynamicsUtils
@@ -64,14 +68,16 @@ def compute_roa(map_graph, morse_graph, lower_bounds, upper_bounds, output_dir):
         plt.savefig(out_pic, bbox_inches='tight')
 
 def main(args, config, experiment_name):
+    fine_tune = args.fine_tune
 
-    dyn_utils = DynamicsUtils(config)
+    dyn_utils = DynamicsUtils(config, fine_tune)
 
     MG_util = CMGDB_util.CMGDB_util()
 
     system = get_system(config['system'], config['high_dims'])
 
     sb = args.sub
+
     number_of_steps = np.ceil(12 / config['step'])  # at least 0.6 seconds in total
     if config['system'] == "discrete_map":
         number_of_steps = 1
@@ -133,6 +139,10 @@ def main(args, config, experiment_name):
     lower_bounds = np.min(latent_space_sample, axis=0).tolist()
     upper_bounds = np.max(latent_space_sample, axis=0).tolist()
 
+    print('lower bounds: ', lower_bounds)
+    print('upper bounds: ', upper_bounds)
+
+
     print("data on the latent space", latent_space_sample.shape)
     print(latent_space_sample[1])
 
@@ -150,12 +160,11 @@ def main(args, config, experiment_name):
 
 
     # base name for the output files.
-    base_name = f"{config['output_dir']}{args.name_out}"
-    
-    
-    print(base_name)
+    if fine_tune:
+        base_name = f"{config['output_dir']}/MG_fine_tune" + '/MG_fine_tune'
 
-    base_name = f"{config['output_dir']}/MG"
+    else:
+        base_name = f"{config['output_dir']}{args.name_out}"
 
     MG_util.dir_path = ""
     
@@ -163,11 +172,17 @@ def main(args, config, experiment_name):
         subdiv_min, subdiv_max, lower_bounds, upper_bounds, phase_periodic, F, base_name, subdiv_init)
 
 
-    write_experiments(morse_graph, experiment_name, config['output_dir'])
+    if fine_tune:
+        base_name = f"{config['output_dir']}/MG_fine_tune"
+    #write_experiments(morse_graph, experiment_name, config['output_dir'])
+    write_experiments(morse_graph, experiment_name, base_name)
 
     if args.RoA:
+        if fine_tune:
+            base_name = f"{config['output_dir']}/MG_fine_tune"
+        print('computing RoA')
      
-        compute_roa(map_graph, morse_graph, lower_bounds, upper_bounds, config['output_dir'])
+        compute_roa(map_graph, morse_graph, lower_bounds, upper_bounds, base_name)
 
 if __name__ == "__main__":
 
@@ -179,6 +194,7 @@ if __name__ == "__main__":
     parser.add_argument('--sub',help='Select subdivision',type=int,default=14)
     parser.add_argument('--validation_type',help='Select the type of Validation for the lantent discretization',type=str,default='random')
     parser.add_argument('--Lips',help='increase Lipschitz constant by x%',type=int,default=0)
+    parser.add_argument('--fine_tune',help='Compute RoA and MG for fine-tuned model', action='store_true')
 
     args = parser.parse_args()
     config_fname = args.config_dir + args.config
