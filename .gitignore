@@ -19,3 +19,5 @@ config_humanoid_humanoid_10x/
 config_humanoid_humanoid_1000x/
 1_09_configs/
 old_configs/
+examples/concatenated_*
+examples/config*
