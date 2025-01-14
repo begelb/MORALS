@@ -7,16 +7,19 @@ from MORALS.grid import Grid
 import os
 
 class MorseGraphOutputProcessor:
-    def __init__(self, config):
-        mg_roa_fname = os.path.join(config['output_dir'], 'MG_RoA_.csv')
-        mg_att_fname = os.path.join(config['output_dir'], 'MG_attractors.txt')
-        mg_fname = os.path.join(config['output_dir'], 'MG')
+    def __init__(self, config, output_dir):
+        mg_roa_fname = os.path.join(output_dir, 'MG_RoA_.csv')
+        mg_att_fname = os.path.join(output_dir, 'MG_attractors.txt')
+        mg_fname = os.path.join(output_dir, 'MG')
+        # mg_roa_fname = os.path.join(config['output_dir'], 'MG_RoA_.csv')
+        # mg_att_fname = os.path.join(config['output_dir'], 'MG_attractors.txt')
+        # mg_fname = os.path.join(config['output_dir'], 'MG')
 
         self.dims = config['low_dims']
 
         # Check if the file exists
         if not os.path.exists(mg_roa_fname):
-            raise FileNotFoundError("Morse Graph RoA file does not exist at: " + config['output_dir'])
+            raise FileNotFoundError("Morse Graph RoA file does not exist at: " + output_dir)
         with open(mg_roa_fname, 'r') as f:
             lines = f.readlines()
             # Find indices where the first character is an alphabet
@@ -51,7 +54,7 @@ class MorseGraphOutputProcessor:
             self.corner_points[int(self.attractor_nodes_data[i, 0])] = int(self.attractor_nodes_data[i, 1])
 
         if not os.path.exists(mg_att_fname):
-            raise FileNotFoundError("Morse Graph attractors file does not exist at: " + config['output_dir'])
+            raise FileNotFoundError("Morse Graph attractors file does not exist at: " + output_dir)
         
         self.found_attractors = -1
         with open(mg_att_fname, 'r') as f:
@@ -62,7 +65,7 @@ class MorseGraphOutputProcessor:
             self.attractor_nodes = np.array([int(x) for x in line.split("[")[1].split("]")[0].split(",")])
 
         if not os.path.exists(mg_fname):
-            raise FileNotFoundError("Morse Graph file does not exist at: " + config['output_dir'])
+            raise FileNotFoundError("Morse Graph file does not exist at: " + output_dir)
         
         self.incoming_edges = defaultdict(list)
         self.outgoing_edges = defaultdict(list)

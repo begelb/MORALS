@@ -22,6 +22,7 @@ if __name__ == "__main__":
     argparser.add_argument('--config', type=str)
     argparser.add_argument('--test_data',type=str, default="")
     argparser.add_argument('--test_labels',type=str, default="")
+    argparser.add_argument('--fine_tune',help='Evaluate for fine_tuned model', action='store_true')
 
     args = argparser.parse_args()
 
@@ -47,7 +48,7 @@ if __name__ == "__main__":
         recalls[k] = []
     
    # try:
-    mg_out_utils = MorseGraphOutputProcessor(config)
+    mg_out_utils = MorseGraphOutputProcessor(config, output_dir)
     # except FileNotFoundError:
     #     continue
     # except ValueError:
@@ -61,7 +62,7 @@ if __name__ == "__main__":
         print('only one attractor')
         exit()
     
-    dynamics = DynamicsUtils(config)
+    dynamics = DynamicsUtils(config, args.fine_tune)
     if trajectories is None:
         print("Assumes all configs in this experiment share the same dataset")
         if args.test_data == "" or args.test_labels == "":
@@ -128,6 +129,8 @@ if __name__ == "__main__":
     recalls[k].append(recall)
 
     # Write mean and stddev to file
+    if args.fine_tune:
+        output_dir += "MG_fine_tune/"
     with open(output_dir + "precision_recall.txt", "w") as f:
         for k in precisions:
             f.write(k + "," + str(np.mean(precisions[k])) + "," + str(np.std(precisions[k])) + "," + str(np.mean(recalls[k])) + "," + str(np.std(recalls[k])) + "\n")
