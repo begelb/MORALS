@@ -30,6 +30,9 @@ if __name__ == "__main__":
     successful_final_conditions_true = None
 
     output_dir = "output/" + args.out_dir + "/"
+    if args.fine_tune:
+        output_dir += "MG_fine_tune/"
+
     precisions = {}
     recalls = {}
 
@@ -48,6 +51,7 @@ if __name__ == "__main__":
         recalls[k] = []
     
    # try:
+    print('output_dir: ', output_dir)
     mg_out_utils = MorseGraphOutputProcessor(config, output_dir)
     # except FileNotFoundError:
     #     continue
@@ -129,8 +133,8 @@ if __name__ == "__main__":
     recalls[k].append(recall)
 
     # Write mean and stddev to file
-    if args.fine_tune:
-        output_dir += "MG_fine_tune/"
+    # if args.fine_tune:
+    #     output_dir += "MG_fine_tune/"
     with open(output_dir + "precision_recall.txt", "w") as f:
         for k in precisions:
             f.write(k + "," + str(np.mean(precisions[k])) + "," + str(np.std(precisions[k])) + "," + str(np.mean(recalls[k])) + "," + str(np.std(recalls[k])) + "\n")
