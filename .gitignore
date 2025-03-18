@@ -21,3 +21,4 @@ config_humanoid_humanoid_1000x/
 old_configs/
 examples/concatenated_*
 examples/config*
+sphere_data_plots/
