@@ -2,6 +2,7 @@ from geomstats.geometry.hypersphere import Hypersphere
 import numpy as np
 import os
 import plotly.graph_objs as go
+import math
 
 n_size = 500
 theta = np.random.uniform(low= 0 * -3.14159, high = 2 * 3.14159, size = n_size)
@@ -38,7 +39,7 @@ def plot_data(x, y, z, i):
                         yaxis = dict(nticks=4, range=[-1,1],),
                         zaxis = dict(nticks=4, range=[-1,1],),),
         margin=dict(r=20, l=10, b=10, t=10))
-    fig.show()
+  #  fig.show()
     file_name = f'sphere_data_plots/{i}.png'
     fig.write_image(file_name) 
 
@@ -49,31 +50,37 @@ def interate_sphere_map(k, input, w_in):
         input = (theta, phi)
         plot_data(x, y, z, i)
 
-        print(w)
-
         for j in range(len(x)):
             file_name = f'examples/data/sphere/{j}.txt'
 
             with open(file_name, "a") as f:
                 print(x[j], y[j], z[j], w_out[j], sep=", ", file=f)
 
+        if i+1 == k:
+            file_name = 'examples/data/sphere_labels.txt'
+            with open(file_name, "w") as f:
+                for j in range(len(x)):
+
+                    # Here I am assuming the fact that all of the other coordinates are close to zero and therefore not checking
+                    if math.isclose(z[j], 1, rel_tol=0.05):
+                        label = 1
+                    elif math.isclose(z[j], -1, rel_tol=0.05):
+                        label = 0
+                    else:
+                        raise Exception('point does not have label')
+                    print(f'{j}.txt', label, sep=",", file=f)
+
+
     return input
 
-# Ensure the directory exists
 output_dir = "examples/data/sphere/"
 os.makedirs(output_dir, exist_ok=True)
 
-# Clear all existing files in the directory
+# clear previously made data files
 for file in os.listdir(output_dir):
     file_path = os.path.join(output_dir, file)
-    if os.path.isfile(file_path):  # Ensure it's a file
-        open(file_path, "w").close()  # Truncate the file
+    if os.path.isfile(file_path): 
+        open(file_path, "w").close()
 
 
 interate_sphere_map(5, (theta, phi), w)
-
-
-
-# convert to x, y, z
-# save trajectories in txt files
-# divide w coordinate by 2
