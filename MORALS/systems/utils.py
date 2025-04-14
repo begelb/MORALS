@@ -10,6 +10,7 @@ from MORALS.systems.bistable_rot import Bistable_Rot
 from MORALS.systems.unifinger import Unifinger
 from MORALS.systems.pendulum3links import Pendulum3links
 from MORALS.systems.sphere import Sphere
+from MORALS.systems.sphere2 import Sphere2
 
 def get_system(name, dims=10, **kwargs):
     if name == "pendulum":
@@ -36,6 +37,8 @@ def get_system(name, dims=10, **kwargs):
         system = Pendulum3links(**kwargs)
     elif name == "sphere":
         system = Sphere(**kwargs)
+    elif name == "sphere2":
+        system = Sphere2(**kwargs)
     else:
         print("That system does not exist!")
         raise NotImplementedError
